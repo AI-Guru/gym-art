@@ -9,9 +9,6 @@ from skimage import data, color
 from skimage.transform import rescale, resize, downscale_local_mean
 from scipy.spatial.distance import euclidean
 
-def image_to_grayscale(image):
-    image = color.rgb2gray(image)
-    return image
 
 class ArtEnv(gym.Env):
 
@@ -54,7 +51,7 @@ class ArtEnv(gym.Env):
         ])
 
         self.screen_width = self.image_width * 2 * renderer_scale
-        self.screen_height = self.image_height * renderer_scale
+        self.screen_height = self.image_height * 2 * renderer_scale
 
         self._pygame_screen = None
 
@@ -99,7 +96,7 @@ class ArtEnv(gym.Env):
         self._reset = True
 
         # Select a target image.
-        target_image = image_to_grayscale(random.choice(self.images))
+        target_image = color.rgb2gray(random.choice(self.images))
         target_image *= 255.0
         target_image = target_image.astype("uint8")
         self._target_image = target_image
@@ -130,24 +127,38 @@ class ArtEnv(gym.Env):
         for event in pygame.event.get():
             pass
 
-        target_size = (self.image_width * self.renderer_scale, self.image_height * self.renderer_scale)
-
         # Render target image.
-        image = self._target_pil_image
-        image = image.resize(target_size, Image.NEAREST)
-        image_string = image.convert("RGB").tobytes("raw", "RGB")
-        pil_surface = pygame.image.frombuffer(image_string, target_size, "RGB")
-        self._pygame_screen.blit(pil_surface, (0, 0))
+        self._render_image(self._target_pil_image, (0, 0))
 
         # Render image.
-        image = self._pil_image
-        image = image.resize(target_size, Image.NEAREST)
-        image_string = image.convert("RGB").tobytes("raw", "RGB")
-        pil_surface = pygame.image.frombuffer(image_string, target_size, "RGB")
-        self._pygame_screen.blit(pil_surface, (self.image_width * self.renderer_scale, 0))
+        self._render_image(self._pil_image, (self.image_width * self.renderer_scale, 0))
+
+        # Render differences.
+        image = np.abs(self._image - self._target_image)
+        image = Image.fromarray(image)
+        self._render_image(image, (0, self.image_width * self.renderer_scale))
+
+        # Render non zero pixels.
+        image = self._image.copy()
+        for x in range(image.shape[0]):
+            for y in range(image.shape[0]):
+                if image[x][y] == 0.0:
+                    image[x][y] = 0.0
+                else:
+                    image[x][y] = 255.0
+        image = Image.fromarray(image)
+        self._render_image(image, (self.image_width * self.renderer_scale, self.image_width * self.renderer_scale))
 
         # Flip
         pygame.display.flip()
+
+
+    def _render_image(self, image, position):
+        target_size = (self.image_width * self.renderer_scale, self.image_height * self.renderer_scale)
+        image = image.resize(target_size, Image.NEAREST)
+        buffer = image.convert("RGB").tobytes("raw", "RGB")
+        pil_surface = pygame.image.frombuffer(buffer, target_size, "RGB")
+        self._pygame_screen.blit(pil_surface, position)
 
 
     def _get_observation(self):
