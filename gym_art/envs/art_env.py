@@ -186,7 +186,7 @@ class ArtEnv(gym.Env):
         num_pixels_below_threshold = len(absolute_differences[absolute_differences <= 0.0])
         num_pixels_below_threshold_normalized = num_pixels_below_threshold / (self.image_width * self.image_height)
 
-        reward = int(100 * num_pixels_below_threshold_normalized) - 50
+        reward = int(100 * num_pixels_below_threshold_normalized) - 90
         #print(num_pixels_below_threshold, reward, end=" ")
 
         # Compute reward.
